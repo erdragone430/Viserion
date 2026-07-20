@@ -39,8 +39,24 @@ class PcsxScraper(DirectJsonScraper):
         self.domain = domain
         self.location_query = location_query
 
-    def request_kwargs(self) -> dict:
-        return {"params": {"domain": self.domain, "query": "", "location": self.location_query, "start": 0}}
+    def fetch_raw(self) -> Any:
+        # confirmed live: page size is server-set (10/page) and `start:0`
+        # alone silently truncated Infineon to 10 of 93 total positions -
+        # loop on the response's own `count` until we've collected them all
+        positions = []
+        total = None
+        while total is None or len(positions) < total:
+            resp = requests.get(self.url, params={
+                "domain": self.domain, "query": "", "location": self.location_query, "start": len(positions),
+            }, timeout=self.timeout)
+            resp.raise_for_status()
+            data = resp.json().get("data", {})
+            page = data.get("positions", [])
+            if not page:
+                break
+            positions.extend(page)
+            total = data.get("count", len(positions))
+        return {"data": {"positions": positions}}
 
     def parse(self, raw: Any) -> list[JobPosting]:
         postings = []
@@ -85,6 +101,11 @@ class WorkdayScraper(DirectJsonScraper):
         self.applied_facets = applied_facets or {}
 
     def fetch_raw(self) -> Any:
+        # confirmed live: Workday's `total` field is only populated on the
+        # very first offset=0 response - every later page reports total:0,
+        # which made the old `offset >= total` check stop after page 2
+        # (40/67 Airbus postings). Stop on a short page instead, same
+        # pattern as Amazon/Apple's pagination.
         postings = []
         offset = 0
         while True:
@@ -98,9 +119,19 @@ class WorkdayScraper(DirectJsonScraper):
             data = resp.json()
             page = data.get("jobPostings", [])
             postings.extend(page)
-            offset += self.page_size
-            if offset >= data.get("total", 0) or not page:
+            if len(page) < self.page_size:
                 break
+            offset += self.page_size
+        return postings
+
+    def filter_location(self, postings):
+        # applied_facets already scope results to exact location facet IDs
+        # reverse-engineered from the site's own search UI (see the
+        # docstring above) - that's a precise server-side filter, not a
+        # fuzzy one, so the usual text re-check would only hurt here.
+        # Confirmed live: 12/67 Airbus postings have ambiguous display
+        # text ("2 Locations" etc., incl. facet-confirmed Taufkirchen/
+        # Ottobrunn jobs) that the default text match would wrongly drop.
         return postings
 
     def parse(self, raw: Any) -> list[JobPosting]:

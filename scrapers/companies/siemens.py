@@ -50,11 +50,21 @@ class SiemensScraper(HtmlParseScraper):
                 city = art.select_one(".list-item-jobCity")
                 state = art.select_one(".list-item-jobState")
                 country = art.select_one(".list-item-jobCountry")
-                location = ", ".join(filter(None, [
-                    city.get_text(strip=True) if city else None,
-                    state.get_text(strip=True) if state else None,
-                    country.get_text(strip=True) if country else None,
-                ])) or None
+                if city:
+                    location = ", ".join(filter(None, [
+                        city.get_text(strip=True),
+                        state.get_text(strip=True) if state else None,
+                        country.get_text(strip=True) if country else None,
+                    ])) or None
+                else:
+                    # multi-location postings render as a single "Multiple
+                    # Locations" span instead of the city/state/country
+                    # breakdown - confirmed live 32/113 results are this
+                    # shape. Falling back to that raw text (rather than
+                    # None) keeps them from being dropped outright by the
+                    # location re-check below; see location_aliases.py.
+                    loc_el = art.select_one(".list-item-location")
+                    location = loc_el.get_text(strip=True) if loc_el else None
                 family = art.select_one(".list-item-family")
                 href = link["href"]
                 postings.append(JobPosting(

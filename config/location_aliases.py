@@ -2,10 +2,23 @@ LOCATION_ALIASES = {
     "isar_aerospace": ["Ottobrunn", "Munich", "München"],
     # Airbus Defence and Space's Munich-area presence is Ottobrunn/Taufkirchen,
     # not literally "Munich" - same lesson as Isar Aerospace and SAP's Garching.
+    # NOTE: WorkdayScraper.filter_location() bypasses this check entirely
+    # (see scrapers/direct_json.py) - its applied_facets already do exact
+    # location-ID filtering, more precise than this text match. Kept here
+    # for reference / in case that override is ever reverted.
     "airbus_ds": ["Ottobrunn", "Taufkirchen", "Munich", "München"],
     # IBM's own listings spell it "Muenchen" (ASCII transliteration), which
     # doesn't substring-match "München" - confirmed live, not guessed.
     "ibm": ["Muenchen", "Munich", "München"],
+    # Multi-location postings render as a single "Multiple Locations" span
+    # with no per-city breakdown (confirmed live, 32/113 results) - the
+    # search itself is already scoped to /Munich/, so trust that label
+    # rather than dropping these postings for lack of a parseable city.
+    "siemens": ["Munich", "München", "Multiple Locations"],
+    # Same shape of issue as Siemens: rsCity=Munich already scopes the
+    # search server-side, but multi-location postings show City/region
+    # as "Multiple" instead of a city name (confirmed live, 6/106 results).
+    "rohde_schwarz": ["Munich", "München", "Multiple"],
     "default": ["Munich", "München"],
 }
 
