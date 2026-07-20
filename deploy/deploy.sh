@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PROJECT_DIR="/opt/job_scraper/vyserion_job_scraper"
-SERVICE_USER="jobscraper-svc"
+SERVICE_USER="deployers"
 
 cd "$PROJECT_DIR"
 
