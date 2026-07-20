@@ -44,7 +44,11 @@ if df.empty:
 companies = sorted(df["company"].dropna().unique().tolist())
 min_date = df["effective_date"].min().date()
 max_date = df["effective_date"].max().date()
-default_start = max(min_date, date.today() - timedelta(days=30))
+# ponytail: widened from 30 -> 90 days. Root cause of the Apple under-count
+# bug was postings with an accurate-but-old posted_at falling outside the
+# window; a wider default makes that less likely to bite silently. The
+# "Show all dates" checkbox below covers the rest.
+default_start = max(min_date, date.today() - timedelta(days=90))
 
 filter_col1, filter_col2, filter_col3 = st.columns([2, 2, 2])
 with filter_col1:
@@ -52,13 +56,23 @@ with filter_col1:
     # default to a wall of pills for every company
     selected_companies = st.multiselect("Company", companies, placeholder="All companies")
 with filter_col2:
-    date_range = st.date_input("Date range", value=(default_start, max_date), min_value=min_date, max_value=max_date)
+    # disabled= needs the checkbox value before it's drawn, so read last
+    # run's state here; the checkbox widget itself renders below the date
+    # picker and keeps that state in sync via its key.
+    date_range = st.date_input(
+        "Date range",
+        value=(default_start, max_date),
+        min_value=min_date,
+        max_value=max_date,
+        disabled=st.session_state.get("show_all_dates", False),
+    )
+    show_all_dates = st.checkbox("Show all dates (ignore date filter)", key="show_all_dates")
 with filter_col3:
     keyword = st.text_input("Keyword search (title / department)")
 
 filtered = df if not selected_companies else df[df["company"].isin(selected_companies)]
 
-if isinstance(date_range, tuple) and len(date_range) == 2:
+if not show_all_dates and isinstance(date_range, tuple) and len(date_range) == 2:
     start, end = date_range
     filtered = filtered[(filtered["effective_date"].dt.date >= start) & (filtered["effective_date"].dt.date <= end)]
 
