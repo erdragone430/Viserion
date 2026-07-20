@@ -14,6 +14,11 @@ LOCATION_ALIASES = {
     # with no per-city breakdown (confirmed live, 32/113 results) - the
     # search itself is already scoped to /Munich/, so trust that label
     # rather than dropping these postings for lack of a parseable city.
+    # NOTE: SiemensScraper.filter_location() now bypasses this check
+    # entirely (see scrapers/companies/siemens.py) - its exact City facet
+    # ID (Avature 42388=[912803]) already does precise server-side
+    # filtering, more precise than this text match. Kept here for
+    # reference / in case that override is ever reverted.
     "siemens": ["Munich", "München", "Multiple Locations"],
     # Same shape of issue as Siemens: rsCity=Munich already scopes the
     # search server-side, but multi-location postings show City/region

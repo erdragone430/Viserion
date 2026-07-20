@@ -11,9 +11,17 @@ from ..html_parse import DEFAULT_HEADERS, HtmlParseScraper
 
 class SiemensScraper(HtmlParseScraper):
     company = "siemens"
-    # Avature facet IDs baked into the query string (42414 = Germany country
-    # facet) — reverse-engineered live via the actual search UI, not guessed.
-    base_url = "https://jobs.siemens.com/en_US/externaljobs/SearchJobs/Munich/"
+    # Avature facet IDs (Country=Germany, State=Bavaria, City=Munich) —
+    # reverse-engineered live by applying the three filters in the actual
+    # search UI and capturing the resulting request, not guessed. This
+    # replaces the old country-facet + free-text "/Munich/" keyword path,
+    # which matched only 112/140 postings the exact facet combo returns.
+    base_url = "https://jobs.siemens.com/en_US/externaljobs/SearchJobs/"
+    facets = {
+        "42386": "[812132]", "42386_format": "17546",  # Country: Germany
+        "42387": "[813141]", "42387_format": "17547",  # State: Bavaria
+        "42388": "[912803]", "42388_format": "17879",  # City: Munich
+    }
     page_size = 6  # server-enforced, ignores a larger folderRecordsPerPage
 
     def fetch_raw(self) -> Any:
@@ -21,8 +29,7 @@ class SiemensScraper(HtmlParseScraper):
         offset = 0
         while True:
             resp = requests.get(self.base_url, params={
-                "42414": "[812132]",
-                "42414_format": "17570",
+                **self.facets,
                 "listFilterMode": 1,
                 "folderRecordsPerPage": self.page_size,
                 "folderOffset": offset,
@@ -37,6 +44,14 @@ class SiemensScraper(HtmlParseScraper):
                 break
             offset += self.page_size
         return pages
+
+    def filter_location(self, postings):
+        # The three facets above already do exact location-ID filtering on
+        # Avature's side (confirmed live: 140/140 matches the site's own
+        # "140 results" count for this filter combo) - more precise than
+        # the fuzzy text re-check, and it wrongly drops "Multiple Locations"
+        # postings that the facet itself already confirmed are Munich-scoped.
+        return postings
 
     def parse(self, raw: Any) -> list[JobPosting]:
         postings = []
@@ -59,10 +74,10 @@ class SiemensScraper(HtmlParseScraper):
                 else:
                     # multi-location postings render as a single "Multiple
                     # Locations" span instead of the city/state/country
-                    # breakdown - confirmed live 32/113 results are this
-                    # shape. Falling back to that raw text (rather than
-                    # None) keeps them from being dropped outright by the
-                    # location re-check below; see location_aliases.py.
+                    # breakdown - confirmed live, still true after the
+                    # facet-based rewrite. filter_location() no-ops now (the
+                    # City facet already guarantees relevance) so this is
+                    # just for a readable `location` value, not filtering.
                     loc_el = art.select_one(".list-item-location")
                     location = loc_el.get_text(strip=True) if loc_el else None
                 family = art.select_one(".list-item-family")
@@ -71,9 +86,6 @@ class SiemensScraper(HtmlParseScraper):
                     company=self.company,
                     external_id=job_id or href.rstrip("/").rsplit("/", 1)[-1],
                     title=link.get_text(strip=True),
-                    # fuzzy keyword search (not a strict city facet) — feeding
-                    # the card's own jobCity into `location` lets the standard
-                    # filter_location() re-check double as the precision recheck
                     location=location,
                     url=href,
                     department=family.get_text(strip=True) if family else None,
