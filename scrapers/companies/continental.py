@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import json
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -8,57 +8,70 @@ import requests
 from ..base import JobPosting
 from ..direct_json import DirectJsonScraper
 
-# Continental's own coordinates don't move; same reasoning as Amazon's static
-# Munich lat/long (see amazon.py) - a live geocode for one static city is more
-# moving parts than the constant it would produce.
+# Continental moved to a new careers platform (jobs.continental-industry.com)
+# in mid-2026; the old tx_conjobs_api endpoint is gone. Same static Munich
+# coordinates as before - see git history for the prior platform's version.
 MUNICH_LAT = 48.1391
 MUNICH_LON = 11.5802
 
 
 class ContinentalScraper(DirectJsonScraper):
     company = "continental"
-    url = "https://jobs.continental.com/en/api/result-list/pagetype-jobs/"
-    method = "POST"
+    url = "https://5aexd5th6e.execute-api.eu-central-1.amazonaws.com/v1/jobs/search"
 
-    def request_kwargs(self) -> dict:
-        location = json.dumps({
-            "title": "Munich, Germany",
-            "type": "location",
-            "coordinates": {"latitude": MUNICH_LAT, "longitude": MUNICH_LON},
-        })
-        return {
-            # Confirmed live: a WAF 403s a bare requests.post() with no
-            # Referer/User-Agent, but doesn't need any cookies/session.
-            "headers": {
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                ),
-                "Referer": "https://jobs.continental.com/en/",
-                "Origin": "https://jobs.continental.com",
-            },
-            "data": {
-                "tx_conjobs_api[filter][location]": location,
-                # radius left at the site's own default (50km) rather than widening -
-                # 100km was confirmed to pull in cross-border Austrian retail/tire-shop
-                # jobs that aren't really "Munich", so the default is the more precise
-                # choice even though it means 0 results as of this writing.
-                "tx_conjobs_api[itemsPerPage]": 100,
-            },
-        }
+    def fetch_raw(self) -> Any:
+        # Confirmed live: this Typesense-backed API caps per_page at 50
+        # no matter what's requested, and `found` stays accurate on every
+        # page (unlike Workday's offset bug) - loop on it directly.
+        hits: list[dict] = []
+        page = 1
+        while True:
+            resp = requests.get(self.url, params={
+                "q": "*",
+                "page": page,
+                "per_page": 50,
+                "locale": "en",
+                # Site's own default radius (50km). Confirmed live: 50/100/150km
+                # all return 0 around Munich; first hit appears only at 300km
+                # (Herbolzheim/Weißbach) - same "don't widen" call as before.
+                "filter_by": f"location:({MUNICH_LAT}, {MUNICH_LON}, 50 km)",
+            }, timeout=self.timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            page_hits = data.get("hits", [])
+            hits.extend(page_hits)
+            if not page_hits or len(hits) >= data.get("found", 0):
+                break
+            page += 1
+        return hits
 
     def parse(self, raw: Any) -> list[JobPosting]:
         postings = []
-        for job in raw.get("result", {}).get("list", []):
+        for hit in raw:
+            job = hit.get("document", {})
+            posted_at = None
+            if job.get("postedAt"):
+                try:
+                    posted_at = datetime.fromisoformat(job["postedAt"].replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+            path = job.get("url")
             postings.append(JobPosting(
                 company=self.company,
-                external_id=job.get("refNumber") or job.get("internalId"),
-                title=job.get("title", ""),
-                location=", ".join(filter(None, [job.get("cityLabel"), job.get("countryLabel")])) or None,
-                url=job.get("absoluteUrl"),
-                department=job.get("fieldOfWorkLabel") or None,
-                posted_at=None,
+                external_id=job.get("refNumber") or job.get("id"),
+                title=job.get("name", ""),
+                location=", ".join(filter(None, [job.get("city"), job.get("countryRegion")])) or None,
+                url=f"https://jobs.continental-industry.com{path}" if path else None,
+                department=job.get("fieldOfWork") or None,
+                posted_at=posted_at,
             ))
+        return postings
+
+    def filter_location(self, postings: list[JobPosting]) -> list[JobPosting]:
+        # filter_by=location:(...) above already does exact server-side
+        # geo-radius filtering (confirmed live) - same override rationale as
+        # WorkdayScraper/Siemens: a text re-check would only risk dropping
+        # postings whose city/countryRegion text doesn't literally say Munich.
         return postings
 
 
