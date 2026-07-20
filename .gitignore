@@ -1,0 +1,13 @@
+#MCP 
+.playwright-mcp
+
+#AGENT 
+.claude
+
+#ENV
+.venv
+.env*
+!.env.example
+
+#REPORTS
+recon*
