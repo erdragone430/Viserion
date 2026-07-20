@@ -1,30 +1,23 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from playwright.sync_api import sync_playwright
 
 from ..base import BaseScraper, JobPosting
 
-# Relay doc_id for the "CareersJobSearchResultsV2DataQuery" persisted query -
-# reverse-engineered live from metacareers.com's own network traffic, tied to
-# a specific frontend build. This is the single most fragile part of this
-# scraper (flagged in recon as the most fragile integration of the whole
-# project): if Meta ships a new frontend build, this ID rotates and every
-# call starts failing outright (not silently returning wrong data), which
-# the standard scraper_health consecutive-failure alert will catch same as
-# any other broken scraper - re-extract a fresh doc_id from a live page's
-# network tab (x-fb-friendly-name: CareersJobSearchResultsV2DataQuery) if so.
-DOC_ID = "27129360303422352"
+RESPONSE_TIMEOUT_MS = 15_000
 
 
 class MetaScraper(BaseScraper):
     """Needs a real headless browser (not just realistic headers) - confirmed
     live that a plain `requests` call intermittently gets a WAF error page
-    even with a full browser User-Agent, so the lsd token bootstrap runs
-    inside actual Chromium and the GraphQL call itself is issued from within
-    the page via fetch() to inherit its cookies/session/fingerprint.
+    even with a full browser User-Agent.
+
+    Rather than manually reconstructing the GraphQL call (hardcoded doc_id +
+    scraped x-fb-lsd token), we let the real page make its own request and
+    intercept the response. This avoids depending on Meta's persisted-query
+    scheme, which changes silently across frontend builds.
     """
 
     company = "meta"
@@ -34,44 +27,24 @@ class MetaScraper(BaseScraper):
             browser = p.chromium.launch()
             try:
                 page = browser.new_page()
-                page.goto("https://www.metacareers.com/jobsearch/", wait_until="domcontentloaded")
-                match = re.search(r'"LSD",\[\],\{"token":"([^"]+)"', page.content())
-                if not match:
-                    raise RuntimeError("could not find lsd token on Meta careers page - frontend may have changed")
-                lsd = match.group(1)
-
-                result = page.evaluate(
-                    """
-                    async ({lsd, docId}) => {
-                        const resp = await fetch('https://www.metacareers.com/graphql', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'x-fb-lsd': lsd,
-                            },
-                            body: new URLSearchParams({
-                                fb_api_caller_class: 'RelayModern',
-                                fb_api_req_friendly_name: 'CareersJobSearchResultsV2DataQuery',
-                                variables: JSON.stringify({
-                                    search_input: {
-                                        q: null, divisions: [], offices: ['Munich, Germany'], roles: [],
-                                        leadership_levels: [], saved_jobs: [], saved_searches: [], sub_teams: [],
-                                        teams: [], is_leadership: false, is_remote_only: false, sort_by_new: false,
-                                        results_per_page: null,
-                                    },
-                                    viewasUserID: null, isLoggedIn: false,
-                                }),
-                                doc_id: docId,
-                            }),
-                        });
-                        return await resp.json();
-                    }
-                    """,
-                    {"lsd": lsd, "docId": DOC_ID},
-                )
+                with page.expect_response(
+                    self._is_job_search_response, timeout=RESPONSE_TIMEOUT_MS
+                ) as response_info:
+                    page.goto("https://www.metacareers.com/jobs", wait_until="domcontentloaded")
+                result = response_info.value.json()
             finally:
                 browser.close()
         return result
+
+    @staticmethod
+    def _is_job_search_response(response) -> bool:
+        if "metacareers.com/graphql" not in response.url:
+            return False
+        try:
+            body = response.json()
+        except Exception:
+            return False
+        return "all_jobs" in (body.get("data", {}).get("job_search_with_featured_jobs_v2", {}) or {})
 
     def parse(self, raw: Any) -> list[JobPosting]:
         jobs = raw.get("data", {}).get("job_search_with_featured_jobs_v2", {}).get("all_jobs", []) or []
