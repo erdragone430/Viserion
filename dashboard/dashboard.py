@@ -14,7 +14,12 @@ load_dotenv()
 
 from db.session import engine  # reuse the scraper's existing engine/config, no duplicate connection logic
 
-st.set_page_config(page_title="Job Postings", layout="wide")
+FAVICON_PATH = Path(__file__).resolve().parent.parent / "assets" / "job_dragon.png"
+
+st.set_page_config(
+    page_title="Job Postings",
+    page_icon=str(FAVICON_PATH),
+    layout="wide")
 
 
 @st.cache_data(ttl=300)
