@@ -15,7 +15,7 @@ cd "$PROJECT_DIR"
 # re-chowning to jobscraper-svc:deployers on every deploy instead.
 echo "==> fixing ownership/permissions after pull"
 sudo chown -R jobscraper-svc:deployers "$PROJECT_DIR"
-sudo chmod -R 750 "$PROJECT_DIR"
+sudo chmod -R 770 "$PROJECT_DIR"
 sudo chmod 600 "$PROJECT_DIR/.env"
 
 echo "==> updating virtualenv dependencies"
