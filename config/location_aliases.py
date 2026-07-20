@@ -1,5 +1,11 @@
 LOCATION_ALIASES = {
     "isar_aerospace": ["Ottobrunn", "Munich", "München"],
+    # Airbus Defence and Space's Munich-area presence is Ottobrunn/Taufkirchen,
+    # not literally "Munich" - same lesson as Isar Aerospace and SAP's Garching.
+    "airbus_ds": ["Ottobrunn", "Taufkirchen", "Munich", "München"],
+    # IBM's own listings spell it "Muenchen" (ASCII transliteration), which
+    # doesn't substring-match "München" - confirmed live, not guessed.
+    "ibm": ["Muenchen", "Munich", "München"],
     "default": ["Munich", "München"],
 }
 

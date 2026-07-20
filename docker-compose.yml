@@ -10,5 +10,20 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    env_file: .env
+    environment:
+      # .env's DATABASE_URL points at localhost:5433 for host-run scripts;
+      # inside the compose network we reach postgres via the "db" service
+      # name instead, built from the same .env credentials (no 2nd config file)
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "8501:8501"
+    depends_on:
+      - db
+
 volumes:
   pgdata:

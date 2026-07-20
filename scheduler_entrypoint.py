@@ -2,7 +2,9 @@ from dotenv import load_dotenv
 
 load_dotenv()  # must run before db.session reads DATABASE_URL at import time
 
+import argparse
 import logging
+import os
 from datetime import datetime, timezone
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -11,13 +13,18 @@ from db.models import JobPostingRow, ScraperHealth
 from db.session import SessionLocal, init_db
 from notifier.telegram import notify_new_job, notify_scraper_health
 from scrapers.companies import (
+    airbus_ds,
     amazon,
+    apple,
     celonis,
+    continental,
     flixbus,
     google,
+    ibm,
     infineon,
     isar_aerospace,
     man,
+    meta,
     microsoft,
     personio,
     rohde_schwarz,
@@ -41,12 +48,17 @@ SCRAPERS = [
     flixbus.SCRAPER,
     sap.SCRAPER,
     google.SCRAPER,
+    apple.SCRAPER,
+    meta.SCRAPER,
+    airbus_ds.SCRAPER,
+    continental.SCRAPER,
+    ibm.SCRAPER,
 ]
 
 FAILURE_ALERT_THRESHOLD = 3
 
 
-def run_scraper(session, scraper) -> None:
+def run_scraper(session, scraper, seed_mode: bool = False) -> None:
     health = session.get(ScraperHealth, scraper.company)
     if health is None:
         health = ScraperHealth(company=scraper.company, consecutive_failures=0)
@@ -80,7 +92,7 @@ def run_scraper(session, scraper) -> None:
             posted_at=posting.posted_at,
         ).on_conflict_do_nothing(index_elements=["company", "external_id"])
         result = session.execute(stmt)
-        if result.rowcount:
+        if result.rowcount and not seed_mode:
             notify_new_job(posting)
 
     session.commit()
@@ -88,12 +100,20 @@ def run_scraper(session, scraper) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", action="store_true", help="suppress new-job notifications (for seeding a fresh DB)")
+    args = parser.parse_args()
+
+    seed_mode = args.seed or os.environ.get("SEED_MODE", "false").lower() == "true"
+    if seed_mode:
+        logger.info("Running in SEED MODE — notifications for new jobs are suppressed this run")
+
     init_db()
     session = SessionLocal()
     try:
         for scraper in SCRAPERS:
             try:
-                run_scraper(session, scraper)
+                run_scraper(session, scraper, seed_mode=seed_mode)
             except Exception:
                 session.rollback()
                 logger.exception("unhandled error running %s, skipping", scraper.company)

@@ -11,3 +11,6 @@
 
 #REPORTS
 recon*
+
+#PYCAHCE
+__pycache**

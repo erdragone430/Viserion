@@ -64,6 +64,61 @@ class PcsxScraper(DirectJsonScraper):
         return postings
 
 
+class WorkdayScraper(DirectJsonScraper):
+    """Generic adapter for any company on a Workday-hosted candidate site (CxS API).
+
+    Confirmed against Airbus (ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs).
+    host/tenant/site are constructor args since they vary per company; applied_facets
+    lets a company scope server-side to a division/legal-entity and/or location facet
+    IDs (reverse-engineered from the site's own search UI, not guessed).
+    """
+
+    method = "POST"
+    page_size = 20
+
+    def __init__(self, company: str, host: str, tenant: str, site: str, applied_facets: dict | None = None):
+        self.company = company
+        self.host = host
+        self.tenant = tenant
+        self.site = site
+        self.url = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
+        self.applied_facets = applied_facets or {}
+
+    def fetch_raw(self) -> Any:
+        postings = []
+        offset = 0
+        while True:
+            resp = requests.post(self.url, json={
+                "appliedFacets": self.applied_facets,
+                "limit": self.page_size,
+                "offset": offset,
+                "searchText": "",
+            }, timeout=self.timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            page = data.get("jobPostings", [])
+            postings.extend(page)
+            offset += self.page_size
+            if offset >= data.get("total", 0) or not page:
+                break
+        return postings
+
+    def parse(self, raw: Any) -> list[JobPosting]:
+        postings = []
+        for job in raw:
+            path = job.get("externalPath")
+            postings.append(JobPosting(
+                company=self.company,
+                external_id=path or job.get("title", ""),
+                title=job.get("title", ""),
+                location=job.get("locationsText"),
+                url=f"https://{self.host}/en-US/{self.site}{path}" if path else None,
+                department=None,
+                posted_at=None,
+            ))
+        return postings
+
+
 class GreenhouseScraper(DirectJsonScraper):
     """Generic adapter for any company on the public Greenhouse Job Board API."""
 

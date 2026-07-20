@@ -28,3 +28,12 @@ class ScraperHealth(Base):
     last_run_at = Column(DateTime)
     consecutive_failures = Column(Integer, default=0)
     last_error = Column(Text)
+
+
+class SentTelegramMessage(Base):
+    __tablename__ = "sent_telegram_messages"
+
+    id = Column(Integer, primary_key=True)
+    chat_id = Column(Text, nullable=False)
+    message_id = Column(Integer, nullable=False)
+    sent_at = Column(DateTime, server_default=func.now())

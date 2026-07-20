@@ -13,6 +13,17 @@ def _send(text: str) -> None:
         timeout=10,
     )
     resp.raise_for_status()
+    message_id = resp.json()["result"]["message_id"]
+
+    # local import: avoids a DB/session dependency for callers that only send
+    from db.models import SentTelegramMessage
+    from db.session import SessionLocal
+    session = SessionLocal()
+    try:
+        session.add(SentTelegramMessage(chat_id=str(CHAT_ID), message_id=message_id))
+        session.commit()
+    finally:
+        session.close()
 
 
 def notify_new_job(posting) -> None:
