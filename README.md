@@ -2,7 +2,7 @@
   <img src="assets/job_dragon.png" alt="JobDragon logo" width="220">
 </p>
 
-<h1 align="center">vyserion_job_scraper</h1>
+<h1 align="center">Viserion, the job scraper</h1>
 
 Scrapes company career pages on a schedule, dedups against Postgres, and
 sends a Telegram notification for every genuinely new posting. A Streamlit
