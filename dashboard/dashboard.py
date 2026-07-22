@@ -67,6 +67,7 @@ with filter_col2:
         disabled=st.session_state.get("show_all_dates", False),
     )
     show_all_dates = st.checkbox("Show all dates (ignore date filter)", key="show_all_dates")
+    show_today_only = st.checkbox("Jobs added today", key="show_today_only")
 with filter_col3:
     keyword = st.text_input("Keyword search (title / department)")
 
@@ -75,6 +76,10 @@ filtered = df if not selected_companies else df[df["company"].isin(selected_comp
 if not show_all_dates and isinstance(date_range, tuple) and len(date_range) == 2:
     start, end = date_range
     filtered = filtered[(filtered["effective_date"].dt.date >= start) & (filtered["effective_date"].dt.date <= end)]
+
+if show_today_only:
+    today = date.today()
+    filtered = filtered[filtered["first_seen_at"].dt.date == today]
 
 if keyword:
     kw = keyword.lower()
