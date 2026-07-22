@@ -99,8 +99,14 @@ Seed mode still fetches, dedups, and inserts postings, and still updates
 `scraper_health` normally — it only suppresses the per-job Telegram
 notification. Scraper-health failure alerts are never suppressed.
 
-## Deployment
+## CI / CD
 
-`deploy/deploy.sh` runs on the production server over SSH (see
-`.github/workflows/deploy.yml`) after `git pull`, and rebuilds the dashboard
-container.
+Two GitHub Actions workflows:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **Test** (`.github/workflows/test.yml`) | Push to `main` | Runs the test suite — `test_clear_chat` (SQLite, no DB needed) and `test_seed_mode` (Postgres service container) |
+| **Deploy** (`.github/workflows/deploy.yml`) | Manual (`workflow_dispatch`) | SSHes into the production server, pulls the latest code, and runs `deploy/deploy.sh` to rebuild the dashboard container |
+
+Testing is automatic on every push. Deployment is manual — use the
+GitHub Actions UI to trigger a deploy when you want to ship changes.
