@@ -1,6 +1,6 @@
 from targets.loader import load_target
 
-_cfg = load_target("location_aliases")
+_cfg = load_target("location_aliases") or {}
 
 LOCATION_ALIASES = _cfg
 

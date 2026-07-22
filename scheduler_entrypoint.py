@@ -35,7 +35,7 @@ from scrapers.companies import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SCRAPERS = [
+SCRAPERS = [s for s in [
     amazon.SCRAPER,
     microsoft.SCRAPER,
     infineon.SCRAPER,
@@ -53,7 +53,7 @@ SCRAPERS = [
     airbus_ds.SCRAPER,
     continental.SCRAPER,
     ibm.SCRAPER,
-]
+] if s is not None]
 
 FAILURE_ALERT_THRESHOLD = 3
 

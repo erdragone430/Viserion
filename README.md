@@ -25,6 +25,37 @@ playwright install chromium
 cp .env.example .env   # fill in DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 ```
 
+## Bring your own selectors
+
+This project follows a **"Bring Your Own Selectors"** approach. The scraper
+code contains the parsing logic and framework, but **all company-specific
+targets** (API endpoints, CSS selectors, JSON field mappings, location
+parameters, facet IDs) live in external config files under `targets/` that
+are **not committed** to the repository.
+
+To make the scrapers work you need to provide your own targets:
+
+```bash
+# Copy the example templates for all companies
+for f in targets/*.example.json; do
+  cp "$f" "targets/$(basename "$f" .example.json).json"
+done
+
+# Then fill in the actual values for each company you want to scrape:
+#   vim targets/amazon.json
+#   vim targets/apple.json
+#   ...
+```
+
+Each `targets/<company>.json` file contains the endpoint URL, request
+parameters, response field names, and (for HTML scrapers) CSS selectors
+that the scraper needs. The example files (`targets/*.example.json`)
+document the required schema with placeholder values — fill them with
+real data from the company's career site.
+
+See [`PLAN.md`](PLAN.md) for a detailed breakdown of what was
+externalised and why.
+
 ## Running
 
 ```bash

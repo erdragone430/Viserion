@@ -8,22 +8,14 @@ from targets.loader import load_target
 
 from .base import BaseScraper
 
-_cfg = load_target("base")
+_cfg = load_target("base") or {}
 
 DEFAULT_HEADERS = {
-    "User-Agent": _cfg["user_agent"],
+    "User-Agent": _cfg.get("user_agent", ""),
 }
 
 
 class HtmlParseScraper(BaseScraper):
-    """Base for scrapers backed by plain HTTP GET + HTML parsing (BeautifulSoup).
-
-    Same fetch_raw()/parse()/filter_location() contract as DirectJsonScraper —
-    fetch_raw() just returns HTML text instead of JSON. Companies that need
-    pagination override fetch_raw() themselves (see siemens.py/sap.py/etc),
-    same pattern as Amazon in Phase 1.
-    """
-
     url: str
     method = "GET"
     timeout = _cfg.get("timeout_default", 15)
