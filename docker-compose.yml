@@ -27,3 +27,5 @@ services:
 
 volumes:
   pgdata:
+    external: true 
+    name: vyserion_job_scraper_pgdata
