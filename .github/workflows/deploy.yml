@@ -16,7 +16,7 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
+            sudo chown -R deploy /opt/job_scraper/viserion
             cd /opt/job_scraper/viserion
-            sudo chown -R $USER .
             git pull
             bash deploy/deploy.sh
