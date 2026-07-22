@@ -1,0 +1,12 @@
+{
+  "endpoint": "",
+  "field_mappings": {
+    "date_field": "",
+    "id": "",
+    "title": "",
+    "offices": "",
+    "department": ""
+  },
+  "date_format": "",
+  "url_template": ""
+}

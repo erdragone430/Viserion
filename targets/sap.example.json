@@ -1,0 +1,16 @@
+{
+  "endpoint": "",
+  "page_size": 0,
+  "params": {
+    "q": "",
+    "locationsearch": "",
+    "startrow_param": ""
+  },
+  "selectors": {
+    "rows": "",
+    "title_link": "",
+    "location": ""
+  },
+  "jitter_range": [0, 0],
+  "url_template": ""
+}

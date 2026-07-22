@@ -1,0 +1,26 @@
+{
+  "endpoint": "",
+  "page_size": 0,
+  "params": {
+    "term": "",
+    "country": "",
+    "city": "",
+    "country_param": "",
+    "city_param": "",
+    "offset_param": ""
+  },
+  "selectors": {
+    "cards": "",
+    "title_link": "",
+    "field_row": "",
+    "field_label": "",
+    "field_value": ""
+  },
+  "label_keys": {
+    "city_region": "",
+    "location": "",
+    "functional_area": ""
+  },
+  "url_template": "",
+  "id_pattern": ""
+}

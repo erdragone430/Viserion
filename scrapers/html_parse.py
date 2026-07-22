@@ -4,13 +4,14 @@ from typing import Any
 
 import requests
 
+from targets.loader import load_target
+
 from .base import BaseScraper
 
+_cfg = load_target("base")
+
 DEFAULT_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": _cfg["user_agent"],
 }
 
 
@@ -25,7 +26,7 @@ class HtmlParseScraper(BaseScraper):
 
     url: str
     method = "GET"
-    timeout = 15
+    timeout = _cfg.get("timeout_default", 15)
 
     def request_kwargs(self) -> dict:
         return {"headers": DEFAULT_HEADERS}

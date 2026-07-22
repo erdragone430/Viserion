@@ -1,0 +1,20 @@
+{
+  "endpoint": "",
+  "params": {
+    "location": "",
+    "page_param": ""
+  },
+  "callback_regex": "",
+  "indices": {
+    "job_id": 0,
+    "title": 1,
+    "locations": 0,
+    "posted_ts_array": 0,
+    "posted_ts_value": 0,
+    "location_display_name": 0,
+    "data_total": 0,
+    "first_entry": 0,
+    "first_inner_entry": 0
+  },
+  "url_template": ""
+}

@@ -5,33 +5,33 @@ from typing import Any
 
 import requests
 
+from targets.loader import load_target
+
 from ..base import JobPosting
 from ..direct_json import DirectJsonScraper
 
-# ponytail: Munich's coordinates don't move; a live geocode call (+ cache) for
-# one static city is more moving parts than the constant it would produce.
-MUNICH_LAT = 48.1351
-MUNICH_LON = 11.5820
+_cfg = load_target("amazon")
 
 
 class AmazonScraper(DirectJsonScraper):
     company = "amazon"
-    url = "https://www.amazon.jobs/en/search.json"
-    page_size = 100  # confirmed max accepted by result_limit; paginate via offset
+    url = _cfg["endpoint"]
+    page_size = _cfg["page_size"]
 
     def fetch_raw(self) -> Any:
+        params = _cfg["params"]
         jobs = []
         offset = 0
         while True:
             resp = requests.get(self.url, params={
-                "latitude": MUNICH_LAT,
-                "longitude": MUNICH_LON,
-                "radius": "50mi",
+                "latitude": params["latitude"],
+                "longitude": params["longitude"],
+                "radius": params["radius"],
                 "result_limit": self.page_size,
                 "offset": offset,
             }, timeout=self.timeout)
             resp.raise_for_status()
-            page = resp.json().get("jobs") or []
+            page = resp.json().get(_cfg["field_mappings"]["container"]) or []
             jobs.extend(page)
             if len(page) < self.page_size:
                 break
@@ -39,22 +39,26 @@ class AmazonScraper(DirectJsonScraper):
         return jobs
 
     def parse(self, raw: Any) -> list[JobPosting]:
+        fm = _cfg["field_mappings"]
+        date_fmt = _cfg["date_format"]
+        url_tpl = _cfg["url_template"]
         postings = []
         for job in raw:
             posted_at = None
-            date_str = job.get("posted_date")
+            date_str = job.get(fm["posted_date"])
             if date_str:
                 try:
-                    posted_at = datetime.strptime(date_str, "%B %d, %Y")
+                    posted_at = datetime.strptime(date_str, date_fmt)
                 except ValueError:
                     pass
+            job_path = job.get(fm["job_path"])
             postings.append(JobPosting(
                 company=self.company,
-                external_id=str(job.get("id_icims") or job.get("id")),
-                title=job.get("title", ""),
-                location=job.get("normalized_location") or job.get("location"),
-                url=f"https://www.amazon.jobs{job['job_path']}" if job.get("job_path") else None,
-                department=job.get("job_category"),
+                external_id=str(job.get(fm["id_icims"]) or job.get(fm["id_fallback"])),
+                title=job.get(fm["title"], ""),
+                location=job.get(fm["location"]) or job.get(fm["location_fallback"]),
+                url=f"{url_tpl}{job_path}" if job_path else None,
+                department=job.get(fm["department"]),
                 posted_at=posted_at,
             ))
         return postings

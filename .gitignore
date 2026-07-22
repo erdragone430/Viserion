@@ -14,3 +14,9 @@ recon*
 
 #PYCAHCE
 __pycache**
+
+#TARGETS — bring-your-own-selectors config files (see PLAN.md)
+# Real configs are gitignored; only example templates and the loader are committed.
+targets/*.json
+!targets/*.example.json
+!targets/loader.py

@@ -1,3 +1,11 @@
+from targets.loader import load_target
+
 from ..direct_json import PcsxScraper
 
-SCRAPER = PcsxScraper(company="infineon", host="jobs.infineon.com", domain="infineon.com")
+_cfg = load_target("infineon")
+SCRAPER = PcsxScraper(
+    company="infineon",
+    host=_cfg["host"],
+    domain=_cfg["domain"],
+    location_query=_cfg.get("location_query", "Munich"),
+)

@@ -7,29 +7,28 @@ from typing import Any
 
 import requests
 
+from targets.loader import load_target
+
 from ..base import JobPosting
 from ..html_parse import DEFAULT_HEADERS, HtmlParseScraper
 
-# Google's careers search results aren't in plain HTML - they're embedded as
-# a Closure AF_initDataCallback(...) JS blob. Don't hardcode which ds:N key
-# holds the jobs (that's an implementation detail that can shift); instead
-# scan every AF_initDataCallback blob on the page and duck-type the one whose
-# shape looks like a job list.
-AF_CALLBACK_RE = re.compile(r"AF_initDataCallback\(\{key: '(ds:\d+)', hash: '\d+', data:(.*?), sideChannel:", re.DOTALL)
+_cfg = load_target("google")
+AF_CALLBACK_RE = re.compile(_cfg["callback_regex"])
 
 
 class GoogleScraper(HtmlParseScraper):
     company = "google"
-    url = "https://www.google.com/about/careers/applications/jobs/results/"
+    url = _cfg["endpoint"]
 
     def fetch_raw(self) -> Any:
         pages = []
         page = 1
         total = None
+        params = _cfg["params"]
         while total is None or len(pages) < total:
             resp = requests.get(self.url, params={
-                "location": "Munich, Germany",
-                "page": page,
+                params["page_param"]: page,
+                "location": params["location"],
             }, headers=DEFAULT_HEADERS, timeout=self.timeout)
             resp.raise_for_status()
             jobs, total = self._extract_jobs(resp.text)
@@ -41,6 +40,7 @@ class GoogleScraper(HtmlParseScraper):
 
     @staticmethod
     def _extract_jobs(html: str) -> tuple[list, int]:
+        idx = _cfg["indices"]
         for _key, data_str in AF_CALLBACK_RE.findall(html):
             try:
                 data = json.loads(data_str)
@@ -48,34 +48,28 @@ class GoogleScraper(HtmlParseScraper):
                 continue
             if not (isinstance(data, list) and data and isinstance(data[0], list) and data[0]):
                 continue
-            first = data[0][0]
+            first = data[idx["first_entry"]][idx["first_inner_entry"]]
             if isinstance(first, list) and len(first) > 10 and isinstance(first[1], str):
-                total = data[2] if len(data) > 2 and isinstance(data[2], int) else len(data[0])
+                total = data[idx["data_total"]] if len(data) > idx["data_total"] and isinstance(data[idx["data_total"]], int) else len(data[0])
                 return data[0], total
         return [], 0
 
     def parse(self, raw: Any) -> list[JobPosting]:
+        idx = _cfg["indices"]
+        url_tpl = _cfg["url_template"]
         postings = []
         for job in raw:
-            # Positional indices reverse-engineered on 2026-07-20 by
-            # cross-referencing this blob against the rendered page for
-            # known jobs. There are no field names in this payload - this
-            # is the single most fragile part of the project; if Google
-            # changes their frontend, re-verify these offsets first.
-            job_id = job[0]                                     # [0]  numeric job id (string)
-            title = job[1]                                      # [1]  job title
-            locations = job[9] or []                            # [9]  [[displayName, [aliases], city, null, region, countryCode], ...]
-            posted_ts = job[12][0] if job[12] else None          # [12] [unix_seconds, nanos] - first-published timestamp
-
+            job_id = job[idx["job_id"]]
+            title = job[idx["title"]]
+            locations = job[idx["locations"]] or []
+            posted_ts = job[idx["posted_ts_array"]][idx["posted_ts_value"]] if job[idx["posted_ts_array"]] else None
             posted_at = datetime.fromtimestamp(posted_ts, tz=timezone.utc) if posted_ts else None
             postings.append(JobPosting(
                 company=self.company,
                 external_id=str(job_id),
                 title=title,
-                location=", ".join(loc[0] for loc in locations) or None,
-                # bare numeric-id URL confirmed to resolve (200) without
-                # needing the title slug Google appends for humans
-                url=f"https://www.google.com/about/careers/applications/jobs/results/{job_id}",
+                location=", ".join(loc[idx["location_display_name"]] for loc in locations) or None,
+                url=url_tpl.format(job_id=job_id),
                 department=None,
                 posted_at=posted_at,
             ))

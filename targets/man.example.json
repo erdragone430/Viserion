@@ -1,0 +1,18 @@
+{
+  "endpoint": "",
+  "method": "POST",
+  "request_payload": {},
+  "field_mappings": {
+    "container": "",
+    "total": "",
+    "nested_entry": "",
+    "id": "",
+    "slug": "",
+    "city_field": "",
+    "department_field": "",
+    "date_field": "",
+    "title_field": ""
+  },
+  "date_format": "",
+  "url_template": ""
+}

@@ -1,0 +1,11 @@
+{
+  "endpoint": "",
+  "base_url": "",
+  "selectors": {
+    "job_links": "",
+    "title": "",
+    "location": ""
+  },
+  "fallback_location": "",
+  "id_param": ""
+}

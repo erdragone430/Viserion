@@ -1,0 +1,22 @@
+{
+  "endpoint": "",
+  "params": {
+    "latitude": 0,
+    "longitude": 0,
+    "radius": ""
+  },
+  "page_size": 100,
+  "field_mappings": {
+    "container": "",
+    "id_icims": "",
+    "id_fallback": "",
+    "title": "",
+    "location": "",
+    "location_fallback": "",
+    "job_path": "",
+    "department": "",
+    "posted_date": ""
+  },
+  "date_format": "",
+  "url_template": ""
+}

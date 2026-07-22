@@ -5,38 +5,36 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
+from targets.loader import load_target
+
 from ..base import JobPosting
 from ..html_parse import DEFAULT_HEADERS, HtmlParseScraper
+
+_cfg = load_target("siemens")
 
 
 class SiemensScraper(HtmlParseScraper):
     company = "siemens"
-    # Avature facet IDs (Country=Germany, State=Bavaria, City=Munich) —
-    # reverse-engineered live by applying the three filters in the actual
-    # search UI and capturing the resulting request, not guessed. This
-    # replaces the old country-facet + free-text "/Munich/" keyword path,
-    # which matched only 112/140 postings the exact facet combo returns.
-    base_url = "https://jobs.siemens.com/en_US/externaljobs/SearchJobs/"
-    facets = {
-        "42386": "[812132]", "42386_format": "17546",  # Country: Germany
-        "42387": "[813141]", "42387_format": "17547",  # State: Bavaria
-        "42388": "[912803]", "42388_format": "17879",  # City: Munich
-    }
-    page_size = 6  # server-enforced, ignores a larger folderRecordsPerPage
+    base_url = _cfg["base_url"]
+    page_size = _cfg["page_size"]
 
     def fetch_raw(self) -> Any:
         pages = []
         offset = 0
+        facets = {}
+        for f in _cfg["facets"].values():
+            facets[f["param"]] = f["value"]
+            facets[f"{f['param']}_format"] = f["format"]
         while True:
             resp = requests.get(self.base_url, params={
-                **self.facets,
+                **facets,
                 "listFilterMode": 1,
                 "folderRecordsPerPage": self.page_size,
                 "folderOffset": offset,
             }, headers=DEFAULT_HEADERS, timeout=self.timeout)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
-            articles = soup.select("article.article--result")
+            articles = soup.select(_cfg["selectors"]["article_selector"])
             if not articles:
                 break
             pages.append(articles)
@@ -46,25 +44,22 @@ class SiemensScraper(HtmlParseScraper):
         return pages
 
     def filter_location(self, postings):
-        # The three facets above already do exact location-ID filtering on
-        # Avature's side (confirmed live: 140/140 matches the site's own
-        # "140 results" count for this filter combo) - more precise than
-        # the fuzzy text re-check, and it wrongly drops "Multiple Locations"
-        # postings that the facet itself already confirmed are Munich-scoped.
         return postings
 
     def parse(self, raw: Any) -> list[JobPosting]:
+        sel = _cfg["selectors"]
+        label = _cfg["id_label"]
         postings = []
         for articles in raw:
             for art in articles:
-                link = art.select_one("h3 a")
+                link = art.select_one(sel["title_link"])
                 if not link:
                     continue
-                job_id_el = art.select_one(".list-item-jobId")
-                job_id = job_id_el.get_text(strip=True).replace("Job ID:", "").strip() if job_id_el else None
-                city = art.select_one(".list-item-jobCity")
-                state = art.select_one(".list-item-jobState")
-                country = art.select_one(".list-item-jobCountry")
+                job_id_el = art.select_one(sel["job_id"])
+                job_id = job_id_el.get_text(strip=True).replace(label, "").strip() if job_id_el else None
+                city = art.select_one(sel["city"])
+                state = art.select_one(sel["state"])
+                country = art.select_one(sel["country"])
                 if city:
                     location = ", ".join(filter(None, [
                         city.get_text(strip=True),
@@ -72,15 +67,9 @@ class SiemensScraper(HtmlParseScraper):
                         country.get_text(strip=True) if country else None,
                     ])) or None
                 else:
-                    # multi-location postings render as a single "Multiple
-                    # Locations" span instead of the city/state/country
-                    # breakdown - confirmed live, still true after the
-                    # facet-based rewrite. filter_location() no-ops now (the
-                    # City facet already guarantees relevance) so this is
-                    # just for a readable `location` value, not filtering.
-                    loc_el = art.select_one(".list-item-location")
+                    loc_el = art.select_one(sel["location_multi"])
                     location = loc_el.get_text(strip=True) if loc_el else None
-                family = art.select_one(".list-item-family")
+                family = art.select_one(sel["department"])
                 href = link["href"]
                 postings.append(JobPosting(
                     company=self.company,

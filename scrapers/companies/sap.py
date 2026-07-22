@@ -7,35 +7,34 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
+from targets.loader import load_target
+
 from ..base import JobPosting
 from ..html_parse import DEFAULT_HEADERS, HtmlParseScraper
+
+_cfg = load_target("sap")
 
 
 class SapScraper(HtmlParseScraper):
     company = "sap"
-    url = "https://jobs.sap.com/search/"
-    page_size = 25
+    url = _cfg["endpoint"]
+    page_size = _cfg["page_size"]
 
     def fetch_raw(self) -> Any:
         pages = []
         startrow = 0
+        params = _cfg["params"]
+        jitter = _cfg["jitter_range"]
         while True:
-            # ponytail: jobs.sap.com runs PerimeterX bot mitigation. A cold
-            # curl wasn't blocked in testing, but we only poll hourly anyway,
-            # so a few seconds of jitter before this one request is cheap
-            # insurance. If this scraper starts failing intermittently in
-            # prod, PerimeterX escalating is the first thing to check —
-            # the Phase 1 health-alert system will surface that as 3+
-            # consecutive failures same as any other broken scraper.
-            time.sleep(random.uniform(2, 5))
+            time.sleep(random.uniform(jitter[0], jitter[1]))
             resp = requests.get(self.url, params={
-                "q": "",
-                "locationsearch": "Munich",
-                "startrow": startrow,
+                "q": params["q"],
+                "locationsearch": params["locationsearch"],
+                params["startrow_param"]: startrow,
             }, headers=DEFAULT_HEADERS, timeout=self.timeout)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
-            rows = soup.select("table tr.data-row")
+            rows = soup.select(_cfg["selectors"]["rows"])
             if not rows:
                 break
             pages.append(rows)
@@ -45,16 +44,18 @@ class SapScraper(HtmlParseScraper):
         return pages
 
     def parse(self, raw: Any) -> list[JobPosting]:
+        sel = _cfg["selectors"]
+        url_tpl = _cfg["url_template"]
         postings = []
         for rows in raw:
             for row in rows:
-                link = row.select_one("td.colTitle a.jobTitle-link")
-                loc = row.select_one("td.colLocation span.jobLocation")
+                link = row.select_one(sel["title_link"])
+                loc = row.select_one(sel["location"])
                 if not link:
                     continue
                 href = link["href"]
                 if href.startswith("/"):
-                    href = f"https://jobs.sap.com{href}"
+                    href = url_tpl.format(href=href)
                 job_id = href.rstrip("/").rsplit("/", 1)[-1]
                 postings.append(JobPosting(
                     company=self.company,

@@ -1,0 +1,16 @@
+{
+  "base_url": "",
+  "facets": {},
+  "page_size": 0,
+  "selectors": {
+    "article_selector": "",
+    "title_link": "",
+    "job_id": "",
+    "city": "",
+    "state": "",
+    "country": "",
+    "location_multi": "",
+    "department": ""
+  },
+  "id_label": ""
+}

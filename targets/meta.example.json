@@ -1,0 +1,13 @@
+{
+  "page_url": "",
+  "graphql_url_pattern": "",
+  "response_timeout_ms": 30000,
+  "data_path": [],
+  "field_mappings": {
+    "id": "",
+    "title": "",
+    "locations": "",
+    "teams": ""
+  },
+  "url_template": ""
+}

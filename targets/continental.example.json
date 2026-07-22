@@ -1,0 +1,25 @@
+{
+  "endpoint": "",
+  "params": {
+    "q": "",
+    "per_page": 0,
+    "locale": "",
+    "latitude": 0,
+    "longitude": 0,
+    "radius": ""
+  },
+  "field_mappings": {
+    "container": "",
+    "total": "",
+    "document_key": "",
+    "date_field": "",
+    "ref_number": "",
+    "id_fallback": "",
+    "title": "",
+    "city": "",
+    "country_region": "",
+    "department": "",
+    "url_field": ""
+  },
+  "url_template": ""
+}

@@ -1,0 +1,15 @@
+{
+  "endpoint": "",
+  "method": "POST",
+  "request_payload": {},
+  "field_mappings": {
+    "hits_outer": "",
+    "hits_inner": "",
+    "source": "",
+    "id": "",
+    "title": "",
+    "url": "",
+    "department": "",
+    "city": ""
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "endpoints": {
+    "search": "",
+    "cookie_page": "",
+    "csrf_token": ""
+  },
+  "user_agent": "",
+  "csrf_header": "",
+  "search_payload": {
+    "locations": [],
+    "locale": "",
+    "long_date_format": "",
+    "medium_date_format": ""
+  },
+  "page_size": 0,
+  "field_mappings": {
+    "response_container": "",
+    "results_container": "",
+    "total_records": "",
+    "posted_date": "",
+    "locations": "",
+    "position_id": "",
+    "slug": "",
+    "job_position_id": "",
+    "id_fallback": "",
+    "posting_title": "",
+    "location_name": "",
+    "team_container": "",
+    "team_name": ""
+  },
+  "url_template": ""
+}
