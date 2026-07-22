@@ -5,7 +5,7 @@
 # overwritten mid-execution by its own git pull is a real footgun).
 set -euo pipefail
 
-PROJECT_DIR="/opt/job_scraper/vyserion_job_scraper"
+PROJECT_DIR="/opt/job_scraper/viserion"
 SERVICE_USER="jobscraper-svc"
 
 cd "$PROJECT_DIR"
