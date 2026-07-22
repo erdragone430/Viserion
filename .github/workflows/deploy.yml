@@ -17,5 +17,6 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/job_scraper/viserion
+            git config --global --add safe.directory /opt/job_scraper/viserion
             git pull
             bash deploy/deploy.sh
