@@ -1,6 +1,9 @@
+import logging
 import os
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -22,6 +25,8 @@ def _send(text: str) -> None:
     try:
         session.add(SentTelegramMessage(chat_id=str(CHAT_ID), message_id=message_id))
         session.commit()
+    except Exception:
+        logger.exception("failed to persist SentTelegramMessage (alert was sent)")
     finally:
         session.close()
 

@@ -5,8 +5,11 @@ load_dotenv()  # must run before db.session reads DATABASE_URL at import time
 import argparse
 import logging
 import os
+import sys
+import time
 from datetime import datetime, timezone
 
+import sqlalchemy.exc
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from db.models import JobPostingRow, ScraperHealth
@@ -59,44 +62,50 @@ FAILURE_ALERT_THRESHOLD = 3
 
 
 def run_scraper(session, scraper, seed_mode: bool = False) -> None:
-    health = session.get(ScraperHealth, scraper.company)
-    if health is None:
-        health = ScraperHealth(company=scraper.company, consecutive_failures=0)
-        session.add(health)
-
-    health.last_run_at = datetime.now(timezone.utc)
-
     try:
-        postings = scraper.run()
-    except Exception as exc:
-        health.consecutive_failures += 1
-        health.last_error = str(exc)
-        logger.exception("scraper failed: %s", scraper.company)
-        if health.consecutive_failures >= FAILURE_ALERT_THRESHOLD:
-            notify_scraper_health(scraper.company, health.consecutive_failures, str(exc))
+        health = session.get(ScraperHealth, scraper.company)
+        if health is None:
+            health = ScraperHealth(company=scraper.company, consecutive_failures=0)
+            session.add(health)
+
+        health.last_run_at = datetime.now(timezone.utc)
+
+        try:
+            postings = scraper.run()
+        except sqlalchemy.exc.OperationalError:
+            raise
+        except Exception as exc:
+            health.consecutive_failures += 1
+            health.last_error = str(exc)
+            logger.exception("scraper failed: %s", scraper.company)
+            if health.consecutive_failures >= FAILURE_ALERT_THRESHOLD:
+                notify_scraper_health(scraper.company, health.consecutive_failures, str(exc))
+            session.commit()
+            return
+
+        health.last_success_at = datetime.now(timezone.utc)
+        health.consecutive_failures = 0
+        health.last_error = None
+
+        for posting in postings:
+            stmt = pg_insert(JobPostingRow).values(
+                company=posting.company,
+                external_id=posting.external_id,
+                title=posting.title,
+                location=posting.location,
+                url=posting.url,
+                department=posting.department,
+                posted_at=posting.posted_at,
+            ).on_conflict_do_nothing(index_elements=["company", "external_id"])
+            result = session.execute(stmt)
+            if result.rowcount and not seed_mode:
+                notify_new_job(posting)
+
         session.commit()
-        return
-
-    health.last_success_at = datetime.now(timezone.utc)
-    health.consecutive_failures = 0
-    health.last_error = None
-
-    for posting in postings:
-        stmt = pg_insert(JobPostingRow).values(
-            company=posting.company,
-            external_id=posting.external_id,
-            title=posting.title,
-            location=posting.location,
-            url=posting.url,
-            department=posting.department,
-            posted_at=posting.posted_at,
-        ).on_conflict_do_nothing(index_elements=["company", "external_id"])
-        result = session.execute(stmt)
-        if result.rowcount and not seed_mode:
-            notify_new_job(posting)
-
-    session.commit()
-    logger.info("%s: %d matching postings", scraper.company, len(postings))
+        logger.info("%s: %d matching postings", scraper.company, len(postings))
+    except sqlalchemy.exc.OperationalError:
+        logger.exception("DB error in %s, aborting scraper run", scraper.company)
+        raise
 
 
 def main() -> None:
@@ -108,12 +117,30 @@ def main() -> None:
     if seed_mode:
         logger.info("Running in SEED MODE — notifications for new jobs are suppressed this run")
 
-    init_db()
+    last_err = None
+    for attempt in range(3):
+        try:
+            init_db()
+            last_err = None
+            break
+        except sqlalchemy.exc.OperationalError as e:
+            last_err = e
+            logger.warning("DB not ready (attempt %d/3), retrying…", attempt + 1)
+            time.sleep(2 ** attempt)
+    if last_err is not None:
+        logger.critical("DB unreachable after 3 attempts, exiting")
+        notify_scraper_health("SYSTEM", 0, f"DB unreachable after 3 attempts: {last_err}")
+        sys.exit(1)
+
     session = SessionLocal()
     try:
         for scraper in SCRAPERS:
             try:
                 run_scraper(session, scraper, seed_mode=seed_mode)
+            except sqlalchemy.exc.OperationalError:
+                logger.critical("DB connection lost, aborting run")
+                session.rollback()
+                sys.exit(1)
             except Exception:
                 session.rollback()
                 logger.exception("unhandled error running %s, skipping", scraper.company)
