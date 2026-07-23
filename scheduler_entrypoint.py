@@ -52,10 +52,10 @@ SCRAPERS = [s for s in [
     sap.SCRAPER,
     google.SCRAPER,
     apple.SCRAPER,
-    meta.SCRAPER,
+    #meta.SCRAPER,
     airbus_ds.SCRAPER,
     continental.SCRAPER,
-    ibm.SCRAPER,
+    #ibm.SCRAPER,
 ] if s is not None]
 
 FAILURE_ALERT_THRESHOLD = 3
