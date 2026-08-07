@@ -28,6 +28,7 @@ def load_postings() -> pd.DataFrame:
         "SELECT company, external_id, title, location, url, department, posted_at, first_seen_at "
         "FROM job_postings",
         engine,
+        parse_dates=["posted_at", "first_seen_at"],
     )
     df["effective_date"] = df["posted_at"].fillna(df["first_seen_at"])
     return df
