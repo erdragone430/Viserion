@@ -20,3 +20,6 @@ __pycache**
 targets/*.json
 !targets/*.example.json
 !targets/loader.py
+
+#DATA 
+data
