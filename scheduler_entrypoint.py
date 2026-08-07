@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timezone
 
 import sqlalchemy.exc
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from db.models import JobPostingRow, ScraperHealth
 from db.session import SessionLocal, init_db
@@ -88,7 +88,7 @@ def run_scraper(session, scraper, seed_mode: bool = False) -> None:
         health.last_error = None
 
         for posting in postings:
-            stmt = pg_insert(JobPostingRow).values(
+            stmt = sqlite_insert(JobPostingRow).values(
                 company=posting.company,
                 external_id=posting.external_id,
                 title=posting.title,

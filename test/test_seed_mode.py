@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from unittest.mock import MagicMock, patch
 
-os.environ.setdefault("DATABASE_URL", "postgresql://postgres:test@localhost:5434/test")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test-token")
 os.environ.setdefault("TELEGRAM_CHAT_ID", "123")
 

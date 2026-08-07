@@ -4,7 +4,7 @@
 
 <h1 align="center">Viserion, the job scraper</h1>
 
-Scrapes company career pages on a schedule, dedups against Postgres, and
+Scrapes company career pages on a schedule, dedups against SQLite, and
 sends a Telegram notification for every genuinely new posting. A Streamlit
 dashboard gives a browsable view of everything collected plus per-scraper
 health.
@@ -22,7 +22,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
 
-cp .env.example .env   # fill in DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+cp .env.example .env   # fill in DATABASE_URL/SQLITE_DATA_DIR, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 ```
 
 ## Bring your own selectors
@@ -105,7 +105,7 @@ Two GitHub Actions workflows:
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| **Test** (`.github/workflows/test.yml`) | Push to `main` | Runs the test suite — `test_clear_chat` (SQLite, no DB needed) and `test_seed_mode` (Postgres service container) |
+| **Test** (`.github/workflows/test.yml`) | Push to `main` | Runs the test suite — `test_clear_chat` and `test_seed_mode` (both in-memory SQLite, no external service needed) |
 | **Deploy** (`.github/workflows/deploy.yml`) | Manual (`workflow_dispatch`) | SSHes into the production server, pulls the latest code, and runs `deploy/deploy.sh` to rebuild the dashboard container |
 
 Testing is automatic on every push. Deployment is manual — use the

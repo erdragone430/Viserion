@@ -10,6 +10,8 @@ SERVICE_USER="jobscraper-svc"
 
 cd "$PROJECT_DIR"
 
+mkdir -p "$PROJECT_DIR/data"  # sqlite file lives here; bind-mounted into the dashboard container
+
 # ponytail: no setgid reliance — chmod -R strips it anyway, and the sudoers
 # whitelist has no room for a `find ... g+s` entry. Correctness comes from
 # re-chowning to jobscraper-svc:deployers on every deploy instead.
@@ -34,7 +36,7 @@ if grep -qi '^playwright' "$PROJECT_DIR/requirements.txt"; then
     sudo "$PROJECT_DIR/.venv/bin/playwright" install-deps chromium
 fi
 
-echo "==> rebuilding + restarting dashboard container (db untouched, no downtime)"
+echo "==> rebuilding + restarting dashboard container (sqlite file untouched, no downtime)"
 sudo docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d --no-deps --build dashboard
 
 echo "==> deploy complete"
