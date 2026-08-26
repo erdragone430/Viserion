@@ -23,3 +23,6 @@ targets/*.json
 
 #DATA 
 data
+
+#LOGS
+logs/
