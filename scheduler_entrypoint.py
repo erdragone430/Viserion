@@ -29,6 +29,7 @@ from scrapers.companies import (
     man,
     #meta,
     microsoft,
+    mongodb,
     personio,
     rohde_schwarz,
     sap,
@@ -56,6 +57,7 @@ SCRAPERS = [s for s in [
     airbus_ds.SCRAPER,
     continental.SCRAPER,
     #ibm.SCRAPER,
+    mongodb.SCRAPER,  # temp: internship season (~end Sept 2026), comment out after
 ] if s is not None]
 
 FAILURE_ALERT_THRESHOLD = 3
