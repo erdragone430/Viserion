@@ -178,6 +178,58 @@ class AshbyScraper(DirectJsonScraper):
         return postings
 
 
+class SmartRecruitersScraper(DirectJsonScraper):
+    """Generic adapter for any company on the public SmartRecruiters Postings API.
+
+    The public posting page resolves fine from the bare numeric id
+    (jobs.smartrecruiters.com/{company}/{id}, confirmed live) so we skip the
+    per-job detail call that would otherwise be needed just to get the
+    slugged postingUrl.
+    """
+
+    page_size = 100
+
+    def __init__(self, company: str, company_identifier: str):
+        self.company = company
+        self.company_identifier = company_identifier
+        self.url = f"https://api.smartrecruiters.com/v1/companies/{company_identifier}/postings"
+
+    def fetch_raw(self) -> Any:
+        postings = []
+        offset = 0
+        while True:
+            resp = requests.get(self.url, params={"limit": self.page_size, "offset": offset}, timeout=self.timeout)
+            resp.raise_for_status()
+            data = resp.json()
+            page = data.get("content", [])
+            postings.extend(page)
+            if len(page) < self.page_size:
+                break
+            offset += self.page_size
+        return postings
+
+    def parse(self, raw: Any) -> list[JobPosting]:
+        postings = []
+        for job in raw:
+            posted_at = None
+            if job.get("releasedDate"):
+                try:
+                    posted_at = datetime.fromisoformat(job["releasedDate"].replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+            location = job.get("location", {})
+            postings.append(JobPosting(
+                company=self.company,
+                external_id=str(job["id"]),
+                title=job.get("name", ""),
+                location=location.get("fullLocation"),
+                url=f"https://jobs.smartrecruiters.com/{self.company_identifier}/{job['id']}",
+                department=(job.get("department") or {}).get("label"),
+                posted_at=posted_at,
+            ))
+        return postings
+
+
 class GreenhouseScraper(DirectJsonScraper):
     """Generic adapter for any company on the public Greenhouse Job Board API."""
 

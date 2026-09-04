@@ -33,6 +33,7 @@ from scrapers.companies import (
     personio,
     rohde_schwarz,
     sap,
+    scalable_capital,
     siemens,
     uncountable,
 )
@@ -60,6 +61,7 @@ SCRAPERS = [s for s in [
     #ibm.SCRAPER,
     mongodb.SCRAPER,  # temp: internship season (~end Sept 2026), comment out after
     uncountable.SCRAPER,
+    scalable_capital.SCRAPER,
 ] if s is not None]
 
 FAILURE_ALERT_THRESHOLD = 3
