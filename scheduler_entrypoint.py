@@ -34,6 +34,7 @@ from scrapers.companies import (
     rohde_schwarz,
     sap,
     siemens,
+    uncountable,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +59,7 @@ SCRAPERS = [s for s in [
     continental.SCRAPER,
     #ibm.SCRAPER,
     mongodb.SCRAPER,  # temp: internship season (~end Sept 2026), comment out after
+    uncountable.SCRAPER,
 ] if s is not None]
 
 FAILURE_ALERT_THRESHOLD = 3

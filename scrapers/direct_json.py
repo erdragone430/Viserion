@@ -150,6 +150,34 @@ class WorkdayScraper(DirectJsonScraper):
         return postings
 
 
+class AshbyScraper(DirectJsonScraper):
+    """Generic adapter for any company on the public Ashby Job Board API."""
+
+    def __init__(self, company: str, org_slug: str):
+        self.company = company
+        self.url = f"https://api.ashbyhq.com/posting-api/job-board/{org_slug}"
+
+    def parse(self, raw: Any) -> list[JobPosting]:
+        postings = []
+        for job in raw.get("jobs", []):
+            posted_at = None
+            if job.get("publishedAt"):
+                try:
+                    posted_at = datetime.fromisoformat(job["publishedAt"])
+                except ValueError:
+                    pass
+            postings.append(JobPosting(
+                company=self.company,
+                external_id=job["id"],
+                title=job.get("title", ""),
+                location=job.get("location"),
+                url=job.get("jobUrl"),
+                department=job.get("department"),
+                posted_at=posted_at,
+            ))
+        return postings
+
+
 class GreenhouseScraper(DirectJsonScraper):
     """Generic adapter for any company on the public Greenhouse Job Board API."""
 

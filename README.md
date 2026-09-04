@@ -13,7 +13,7 @@ health.
 
 Amazon, Microsoft, Infineon, MAN, Isar Aerospace, Celonis, Personio, Siemens,
 Rohde & Schwarz, FlixBus, SAP, Google, Apple, Meta, Airbus DS, Continental,
-IBM — see `scrapers/companies/`.
+IBM, MongoDB, Uncountable — see `scrapers/companies/`.
 
 ## Setup
 
