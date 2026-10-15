@@ -28,7 +28,7 @@ from scrapers.companies import (
     isar_aerospace,
     man,
     #meta,
-    microsoft,
+    #microsoft,
     mongodb,
     personio,
     rohde_schwarz,
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 SCRAPERS = [s for s in [
     amazon.SCRAPER,
-    microsoft.SCRAPER,
+    #microsoft.SCRAPER,
     infineon.SCRAPER,
     man.SCRAPER,
     isar_aerospace.SCRAPER,
